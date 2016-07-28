@@ -351,9 +351,9 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
         else:
             shitpokes.append(pokemon)
     if epicpokes:
-        logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in epicpokes])))
+        logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in epicpokes])).strip("\n"))
     if shitpokes:
-        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in shitpokes])))
+        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in shitpokes])).strip("\n"))
     if epicpokes:
         while True:
             try:
