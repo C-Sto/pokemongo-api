@@ -212,12 +212,6 @@ def walkAndSpin(session, fort, speed):
         logging.info("(POKESTOP)\t-\tXP: %d" % fortResponse.experience_awarded)
 
 
-# Walk and spin everywhere
-def walkAndSpinMany(session, forts):
-    for fort in forts:
-        walkAndSpin(session, fort, speed)
-
-
 # A very brute force approach to evolving
 def evolveAllPokemon(session):
     inventory = session.checkInventory()
@@ -232,12 +226,6 @@ def releaseAllPokemon(session):
     for pokemon in inventory.party:
         session.releasePokemon(pokemon)
         time.sleep(1)
-
-
-# Just incase you didn't want any revives
-def tossRevives(session):
-    bag = session.checkInventory().bag
-    return session.recycleItem(items.REVIVE, bag[items.REVIVE])
 
 
 # Set an egg to an incubator
@@ -324,7 +312,7 @@ def cleanPokes(session, pokemon_id):
     for x in range(len(ordered_pokz)-1):
         pok = ordered_pokz[x]
         if pok.cp > 1500 or \
-                (pok.pokemon_id == pokedex.EEVEE and pok.cp > 600) or \
+                (pok.pokemon_id == pokedex.EEVEE and pok.cp > 750) or \
                 (pok.pokemon_id == pokedex.DRATINI and pok.cp > 700) or \
                 (pok.pokemon_id == pokedex.DRAGONAIR and pok.cp > 1100):
             continue
@@ -352,7 +340,8 @@ def check_softban(session, fort, speed):
 
 def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
     """
-    Performs a safe catch of good pokemanz by catching the shithouse ones first and only approaching the mad dogs once it's safe to do so (i.e. after you've catch_successed a shithouse one)
+    Performs a safe catch of good pokemanz by catching the shithouse ones first and only approaching the mad dogs once
+    it's safe to do so (i.e. after you've catch_successed a shithouse one)
     """
     epicpokes = []
     shitpokes = []
@@ -362,9 +351,9 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
         else:
             shitpokes.append(pokemon)
     if epicpokes:
-        logging.info("SOME EPIC POKES EYYYYY: {}".format("\n".join([repr(cunt.pokemon_data) for cunt in epicpokes])))
+        logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in epicpokes])))
     if shitpokes:
-        logging.info("THESE POKES SUCK A MASSIVE DICK: {}".format("\n".join([repr(cunt.pokemon_data) for cunt in shitpokes])))
+        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in shitpokes])))
     if epicpokes:
         while True:
             try:
@@ -374,19 +363,22 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
                 else:
                     continue
             except IndexError:
-                logging.info("Ran out of shithouse pokez")
+                logging.info("(SWARL)\t-\tRan out of shithouse pokez")
                 if enough_time_left(pokies):
                     return False
                 else:
-                    logging.info("well fuckit - no time to waste...")
+                    logging.info("(SWARL)\t-\twell fuckit - no time to waste...")
                     break
         for spaz in epicpokes:
             catch_demPokez(spaz, session, speed)
     for pokemon in shitpokes:
         catch_demPokez(pokemon, session, speed)
     return True
-#cam bot :D
+
+
+# cam bot :D
 def camBot(session):
+
     startlat, startlon, startalt = session.getCoordinates()
     cooldown = 10
     speed = 150*0.277778  # (150kph)
@@ -394,12 +386,12 @@ def camBot(session):
     while True:
         try:
             lat, lon, alt = session.getCoordinates()
+            displayProfile(session)
             dist = Location.getDistance(startlat, startlon,lat, lon)
             logging.info("(TRAVEL)\t-\tDistance from start: "+str(dist))
             if dist > 5000:
                 print "(TRAVEL)\t-\tWalking back to start to stay in area"
                 session.walkTo(startlat, startlon, speed)
-            displayProfile(session)
             cleanAllPokes(session)
             # check for pokeballs (don't try to catch if we have none)
             bag = session.getInventory().bag
@@ -416,7 +408,6 @@ def camBot(session):
             if fort:
                 walkAndSpin(session, fort, speed)
                 cleanInventory(session)
-            # check distance from start
         # Catch problems and reauthenticate
         except GeneralPogoException as e:
             logging.critical('GeneralPogoException raised: %s', e)
@@ -432,25 +423,25 @@ def camBot(session):
 # Entry point
 # Start off authentication and demo
 if __name__ == '__main__':
+    setupLogger()
+    logging.debug('Logger set up')
+
+    # Read in args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--auth", help="Auth Service", required=True)
+    parser.add_argument("-u", "--username", help="Username", required=True)
+    parser.add_argument("-p", "--password", help="Password", required=True)
+    parser.add_argument("-l", "--location", help="Location")
+    parser.add_argument("-g", "--geo_key", help="GEO API Secret")
+    args = parser.parse_args()
+
+    # Check service
+    if args.auth not in ['ptc', 'google']:
+        logging.error('Invalid auth service {}'.format(args.auth))
+        sys.exit(-1)
+
     while True:
         try:
-            setupLogger()
-            logging.debug('Logger set up')
-
-            # Read in args
-            parser = argparse.ArgumentParser()
-            parser.add_argument("-a", "--auth", help="Auth Service", required=True)
-            parser.add_argument("-u", "--username", help="Username", required=True)
-            parser.add_argument("-p", "--password", help="Password", required=True)
-            parser.add_argument("-l", "--location", help="Location")
-            parser.add_argument("-g", "--geo_key", help="GEO API Secret")
-            args = parser.parse_args()
-
-            # Check service
-            if args.auth not in ['ptc', 'google']:
-                logging.error('Invalid auth service {}'.format(args.auth))
-                sys.exit(-1)
-
             # Create PokoAuthObject
             poko_session = PokeAuthSession(
                 args.username,
