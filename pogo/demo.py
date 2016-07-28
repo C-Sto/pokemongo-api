@@ -406,7 +406,7 @@ def camBot(session):
             if bag[items.POKE_BALL] > 0 or bag[items.GREAT_BALL] > 0 or bag[items.ULTRA_BALL] > 0 or bag[items.MASTER_BALL] > 0:
                 coutn = 1
                 while True:
-                    coutn += 1
+                    coutn += 1  # lol at this being added now
                     if safe_catch(findNearPokemon(session), session, speed):
                         break
                     elif coutn >13:
