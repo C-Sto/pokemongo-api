@@ -370,57 +370,48 @@ def camBot(session):
 # Entry point
 # Start off authentication and demo
 if __name__ == '__main__':
-    while(True):
-        setupLogger()
-        logging.debug('Logger set up')
+    while True:
+        try:
+            setupLogger()
+            logging.debug('Logger set up')
 
-        # Read in args
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-a", "--auth", help="Auth Service", required=True)
-        parser.add_argument("-u", "--username", help="Username", required=True)
-        parser.add_argument("-p", "--password", help="Password", required=True)
-        parser.add_argument("-l", "--location", help="Location")
-        parser.add_argument("-g", "--geo_key", help="GEO API Secret")
-        args = parser.parse_args()
+            # Read in args
+            parser = argparse.ArgumentParser()
+            parser.add_argument("-a", "--auth", help="Auth Service", required=True)
+            parser.add_argument("-u", "--username", help="Username", required=True)
+            parser.add_argument("-p", "--password", help="Password", required=True)
+            parser.add_argument("-l", "--location", help="Location")
+            parser.add_argument("-g", "--geo_key", help="GEO API Secret")
+            args = parser.parse_args()
 
-        # Check service
-        if args.auth not in ['ptc', 'google']:
-            logging.error('Invalid auth service {}'.format(args.auth))
-            sys.exit(-1)
+            # Check service
+            if args.auth not in ['ptc', 'google']:
+                logging.error('Invalid auth service {}'.format(args.auth))
+                sys.exit(-1)
 
-        # Create PokoAuthObject
-        poko_session = PokeAuthSession(
-            args.username,
-            args.password,
-            args.auth,
-            geo_key=args.geo_key
-        )
+            # Create PokoAuthObject
+            poko_session = PokeAuthSession(
+                args.username,
+                args.password,
+                args.auth,
+                geo_key=args.geo_key
+            )
 
-        # Authenticate with a given location
-        # Location is not inherent in authentication
-        # But is important to session
-        if args.location:
-            session = poko_session.authenticate(locationLookup=args.location)
-        else:
-            session = poko_session.authenticate()
+            # Authenticate with a given location
+            # Location is not inherent in authentication
+            # But is important to session
+            if args.location:
+                session = poko_session.authenticate(locationLookup=args.location)
+            else:
+                session = poko_session.authenticate()
 
-        # Time to show off what we can do
-        if session:
-            camBot(session)
-            # General
-    #        getProfile(session)
-    #        getInventory(session)
+            # Time to show off what we can do
+            if session:
+                camBot(session)
 
-            # Pokemon related
-    #        pokemon = findBestPokemon(session)
-    #        walkAndCatch(session, pokemon)
-
-            # Pokestop related
-    #        fort = findClosestFort(session)
-    #        walkAndSpin(session, fort)
-
-            # see simpleBot() for logical usecases
-            # eg. simpleBot(session)
-
-        else:
-            logging.critical('Session not created successfully')
+            else:
+                logging.critical('Session not created successfully')
+        except Exception as e:
+            logging.critical("Something tried to shut us down, logging in again after 20 secs")
+            logging.critical(e)
+            time.sleep(20)  # pretty sure this is in seconds
