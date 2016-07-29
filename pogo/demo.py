@@ -4,8 +4,8 @@ import logging
 import time
 import sys
 import traceback
-import pdb
 from custom_exceptions import GeneralPogoException
+from custom_exceptions import NoBallException
 
 from api import PokeAuthSession
 from location import Location
@@ -19,14 +19,18 @@ def setupLogger():
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-    logging.basicConfig(level=logging.INFO)
-
+    # no logging.basicConfig(level=logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
 
 
 def displayProfile(sess):
+    '''
+    Displays profile information to the log output
+    :param sess: session duh
+    :return:
+    '''
     s = ""
     s += sess.getProfile().player_data.username
     s += " Level:"
@@ -46,7 +50,13 @@ def displayProfile(sess):
         s += "NA"
     logging.info("(PROFILE)\t-\t"+s)
 
+
 def getStrongestPokeInParty(party):
+    '''
+    returns the poke with the highest cp in the party. there is probably a better way of doing this
+    :param party:
+    :return:
+    '''
     strongest = 0
     ret = 0
     for poke in party:
@@ -55,85 +65,99 @@ def getStrongestPokeInParty(party):
             ret = poke
     return ret
 
+
 def getStrongestPokeInPartyString(party):
+    '''
+    just gets a string for nice printing :3
+    :param party:
+    :return:
+    '''
     poke = getStrongestPokeInParty(party)
     return str(pokedex[poke.pokemon_id]) + " " + str(poke.cp) +" CP"
 
+
 def findNearPokemon(session):
+    '''
+    gets all 'wild' pokemon, does not include lured or incense pokes :(
+    :param session:
+    :return: list of wild pokemon objects or whatever
+    '''
     cells = session.getMapObjects()
     pokemons = []
     for cell in cells.map_cells:
         pokemons += [p for p in cell.wild_pokemons]
     return pokemons
 
-def showNearPokemon(session):
-    pokemons = findNearPokemon(session)
-    for pokemon in pokemons:
-        print(pokemon)
+
+def pickBestBallToUse(bag, encounter, thresh=0.5):
+    '''
+    Takes in your ball bag, the encounter and works out which ball to use and returns it. Returns false if you got no
+    ballz.
+    :param bag: session.checkInventory().bag pls
+    :param encounter: encounter object
+    :param thresh: probability threshold to use a lower ball. set this lower to use more of the shitty balls
+    :return: false if no balls, otherwise the ball to use (enum)
+    '''
+    enc_cap_prob = encounter.capture_probability.capture_probability
+    # default to first ball
+    if bag[items.ULTRA_BALL] > 0:
+        ball = items.ULTRA_BALL
+    elif bag[items.GREAT_BALL] > 0:
+        ball = items.GREAT_BALL
+    elif bag[items.POKE_BALL] > 0:
+        ball = items.POKE_BALL
+    else:
+        # no balls bro
+        return False
+
+    # use highest ball, or lowest ball over thresh
+    useball = ball
+    # oh god I can't believe I wrote this
+    while ball > 0:  # ball is an enum, 1=poke 2=great, 3=ultra (fuck that better not change)
+        if bag[ball] < 1:  # ignore if we don't have any of the lower ball
+            ball -= 1
+        if enc_cap_prob[ball-1] > thresh:  # check if the ball is likely to work
+            useball = ball  # yay, we can not use an ultra
+        ball -= 1  # on to the next ball
+
+    return useball
 
 
 # Wrap both for ease
-def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=2):
+def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=1):
+    '''
+    re-written, I assme it still works, it kinda worked before
+    :param session: session
+    :param pokemon: the pokemon to catch
+    :param thresholdP:
+    :param limit:
+    :param delay:
+    :return:
+    '''
+
     # Start encounter
     encounter = session.encounterPokemon(pokemon)
-
-    # Grab needed data from proto
-    chances = encounter.capture_probability.capture_probability
-    logging.debug("chances: {}".format(repr(chances)))
-    balls = encounter.capture_probability.pokeball_type
-    logging.debug("balls: {}".format(repr(balls)))
     bag = session.checkInventory().bag
-    logging.debug("bag: {}".format(repr(bag)))
 
-    # Have we used a razz berry yet?
-    berried = False
+    # give the guy a berry if first probability is kinda low (indicates tricky)
+    if encounter.capture_probability.capture_probability[0] < 0.35:
+        logging.info("(ENCOUNTER)\t-\tUsing a %s", items[items.RAZZ_BERRY])
+        session.useItemCapture(items.RAZZ_BERRY, pokemon)
 
-    # Make sure we aren't oer limit
+    bestBall = pickBestBallToUse(bag, encounter, thresholdP)
+
+    # no balls yo
+    if not bestBall:
+        raise NoBallException("(ENCOUNTER)\t-\tOut of usable balls")
+
+    # Only use 5 balls because reasons
     count = 0
 
     # Attempt catch
     while True:
-        bestBall = items.UNKNOWN
-        altBall = items.UNKNOWN
-
-        # Check for balls and see if we pass
-        # wanted threshold
-        for ball in balls:
-            try:
-                if bag[ball] > 0:
-                    altBall = ball
-                    if chances[ball -1] > thresholdP:
-                        bestBall = ball
-            except KeyError:
-                logging.debug("No Balls: {}".format(ball))
-                pass
-        # for i in range(len(balls)):
-        #     if balls[i] in bag and bag[balls[i]] > 0:
-        #         altBall = balls[i]
-        #         if chances[i] > thresholdP:
-        #             bestBall = balls[i]
-        #             break
-
-        # If we can't determine a ball, try a berry
-        # or use a lower class ball
-        if bestBall == items.UNKNOWN:
-            if not berried and items.RAZZ_BERRY in bag and bag[items.RAZZ_BERRY]:
-                logging.info("(ENCOUNTER)\t-\tUsing a RAZZ_BERRY")
-                session.useItemCapture(items.RAZZ_BERRY, pokemon)
-                berried = True
-                time.sleep(delay)
-                continue
-
-            # if no alt ball, there are no balls
-            elif altBall == items.UNKNOWN:
-                raise GeneralPogoException("(ENCOUNTER)\t-\tOut of usable balls")
-            else:
-                bestBall = altBall
-
         # Try to catch it!!
         logging.info("(ENCOUNTER)\t-\tUsing a %s" % items[bestBall])
         attempt = session.catchPokemon(pokemon, bestBall)
-        time.sleep(delay)
 
         # Success or run away
         if attempt.status == 1:
@@ -149,6 +173,7 @@ def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=2):
         if count >= limit:
             logging.info("(ENCOUNTER)\t-\tOver catch limit")
             return None
+        time.sleep(delay)
 
 
 # Catch a pokemon at a given point
@@ -169,13 +194,6 @@ def walkAndCatch(session, pokemon, speed):
         else:
             logging.info("(ENCOUNTER)\t-\tGot away")
             return False
-
-
-
-# Do Inventory stuff
-def getInventory(session):
-    logging.info("Get Inventory:")
-    logging.info(session.getInventory())
 
 
 # Basic solution to spinning all forts.
@@ -202,7 +220,7 @@ def sortCloseForts(session):
     return [instance['fort'] for instance in ordered_forts]
 
 
-# Find the fort closest to user
+# Find the fort closest to user that hasn't been used
 def findClosestFort(session):
     # Find nearest fort (pokestop)
     for fort in sortCloseForts(session):
@@ -244,18 +262,6 @@ def releaseAllPokemon(session):
         time.sleep(1)
 
 
-# Set an egg to an incubator
-def setEgg(session):
-    inventory = session.checkInventory()
-
-    # If no eggs, nothing we can do
-    if len(inventory.eggs) == 0:
-        return None
-
-    egg = inventory.eggs[0]
-    incubator = inventory.incubators[0]
-    return session.setEgg(incubator, egg)
-
 def cleanInventory(session):
     recycled = 0
     bag = session.checkInventory().bag
@@ -284,6 +290,7 @@ def cleanInventory(session):
             recycled+=1
     logging.info("(ITEM MANAGE)\t-\tCleaned out Inventory, "+str(recycled)+" items recycled.")
 
+
 def getPokesByID(party, id):
     ret = []
     for poke in party:
@@ -291,10 +298,11 @@ def getPokesByID(party, id):
             ret.append(poke)
     return ret
 
+
 def cleanAllPokes(session):
     logging.info("(POKEMANAGE)\t-\tCleaning out Pokes...")
     party = session.checkInventory().party
-    keepers = [pokedex.VAPOREON, pokedex.ARCANINE, pokedex.SNORLAX, pokedex.LAPRAS]
+    keepers = [pokedex.VAPOREON, pokedex.ARCANINE, pokedex.SNORLAX, pokedex.LAPRAS] #, pokedex.KRONICD]
     # group
     for poke in range(0,151):
         if poke in keepers:
@@ -312,6 +320,7 @@ def cleanAllPokes(session):
             logging.info("(POKEMANAGE)\t-\tReleasing: "+pokedex[pok.pokemon_id]+" "+str(pok.cp)+" CP")
             session.releasePokemon(pok)
 
+
 def cleanPokes(session, pokemon_id):
     party = session.checkInventory().party
     keepers = [pokedex.VAPOREON, pokedex.ARCANINE, pokedex.SNORLAX, pokedex.LAPRAS]
@@ -324,7 +333,7 @@ def cleanPokes(session, pokemon_id):
         return
     # order by cp
     ordered_pokz= sorted(pokz, key=lambda k: k.cp)
-    #remove all but best CP and best IV
+    # remove all but best CP and best IV
     for x in range(len(ordered_pokz)-1):
         pok = ordered_pokz[x]
         if pok.cp > 1500 or \
@@ -335,24 +344,29 @@ def cleanPokes(session, pokemon_id):
         logging.info("(POKEMANAGE)\t-\tReleasing: "+pokedex[pok.pokemon_id]+" "+str(pok.cp)+" CP")
         session.releasePokemon(pok)
 
+
 def catch_demPokez(pokez, sess, whatup_cunt):
     if walkAndCatch(sess, pokez, whatup_cunt):
         return True
     else:
         return False
 
+
 def enough_time_left(pokzzzzzzzzz):
     return min(sorted(pokzzzzzzzzz, key=lambda p: p.time_till_hidden_ms)) > 1000
 
+
 def location_jumper(locs, session):
     for loc in locs:
+
         pass
+
 
 def check_softban(session, fort, speed):
     return walkAndSpin(session, fort, speed)
 
 
-def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
+def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
     """
     Performs a safe catch of good pokemanz by catching the shithouse ones first and only approaching the mad dogs once
     it's safe to do so (i.e. after you've catch_successed a shithouse one)
@@ -360,14 +374,16 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
     epicpokes = []
     shitpokes = []
     for pokemon in pokies:
-        if pokedex.getRarityById(pokemon.pokemon_data.pokemon_id) >= 4: #if rare pokemanzzzz
+        if pokedex.getRarityById(pokemon.pokemon_data.pokemon_id) >= 4:  # if rare pokemanzzzz
             epicpokes.append(pokemon)
         else:
             shitpokes.append(pokemon)
     if epicpokes:
-        logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}".format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in epicpokes])))
+        logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}"
+                     .format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in epicpokes])))
     if shitpokes:
-        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}".format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in shitpokes])))
+        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}"
+                     .format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in shitpokes])))
     if epicpokes:
         while True:
             try:
@@ -389,14 +405,16 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
         catch_demPokez(pokemon, session, speed)
     return True
 
+
 def grab_some_fkn_pokeballz(session, speed):
     fort = findClosestFort(session)
     if fort:
         walkAndSpin(session, fort, speed)
-        cleanInventory(session)
+
 
 # cambot :D
 def camBot(session):
+
     startlat, startlon, startalt = session.getCoordinates()
     cooldown = 10
     speed = 150*0.277778  # (150kph)
@@ -421,24 +439,27 @@ def camBot(session):
                         break
                     elif coutn > 13:
                         break
-                grab_some_fkn_pokeballz(session, speed)
-            else:
-                grab_some_fkn_pokeballz(session, speed)
+            grab_some_fkn_pokeballz(session, speed)
             evolveAllPokemon(session)
             cleanAllPokes(session)
-            evolveAllPokemon(session)
-            # check distance from start
+
+        # check distance from start
         # Catch problems and reauthenticate
         except GeneralPogoException as e:
             logging.critical('GeneralPogoException raised: %s', e)
             session = poko_session.reauthenticate(session)
             time.sleep(cooldown)
 
+        except NoBallException as e:
+            grab_some_fkn_pokeballz(session, speed)
+
         except Exception as e:
             logging.critical('Exception raised: %s', e)
             traceback.print_exc()
             session = poko_session.reauthenticate(session)
             time.sleep(cooldown)
+
+
 
 # Entry point
 # Start off authentication and demo
