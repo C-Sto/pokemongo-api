@@ -175,6 +175,12 @@ def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=1):
             return None
         time.sleep(delay)
 
+        # update bag
+        bag = session.checkInventory().bag
+
+        # update ball
+        bestBall = pickBestBallToUse(bag, encounter, thresholdP)
+
 
 # Catch a pokemon at a given point
 def walkAndCatch(session, pokemon, speed):
