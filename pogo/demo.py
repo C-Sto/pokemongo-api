@@ -442,7 +442,7 @@ def camBot(session):
             cleanAllPokes(session)
             # check for pokeballs (don't try to catch if we have none)
             bag = session.getInventory().bag
-            if bag[items.POKE_BALL] > 0 or bag[items.GREAT_BALL] > 0 or bag[items.ULTRA_BALL] > 0 or bag[items.MASTER_BALL] > 0:
+            if bag[items.POKE_BALL] > 0 or bag[items.GREAT_BALL] > 0 or bag[items.ULTRA_BALL] > 0:
                 coutn = 1
                 while True:
                     coutn += 1  # lol at this being added now
