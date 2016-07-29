@@ -328,8 +328,7 @@ def catch_demPokez(pokez, sess, whatup_cunt):
         return False
 
 def enough_time_left(pokzzzzzzzzz):
-    pokachu = sorted(pokzzzzzzzzz, lambda p: p.time_till_hidden_ms)
-    return min(pokachu).time_till_hidden_ms > 10000
+    return min(sorted(pokzzzzzzzzz, key=lambda p: p.time_till_hidden_ms)) > 1000
 
 def location_jumper(locs, session):
     for loc in locs:
@@ -352,9 +351,9 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
         else:
             shitpokes.append(pokemon)
     if epicpokes:
-        logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in epicpokes])).strip("\n"))
+        logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}".format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in epicpokes])))
     if shitpokes:
-        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}".format(" ".join([repr(cunt.pokemon_data) for cunt in shitpokes])).strip("\n"))
+        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}".format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in shitpokes])))
     if epicpokes:
         while True:
             try:
@@ -376,10 +375,11 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
         catch_demPokez(pokemon, session, speed)
     return True
 
+def grab_some_fkn_pokeballz(session):
+    pass
 
-# cam bot :D
+# cambot :D
 def camBot(session):
-
     startlat, startlon, startalt = session.getCoordinates()
     cooldown = 10
     speed = 150*0.277778  # (150kph)
@@ -404,11 +404,14 @@ def camBot(session):
                         break
                     elif coutn > 13:
                         break
-                    time.sleep(5)
-            fort = findClosestFort(session)
-            if fort:
-                walkAndSpin(session, fort, speed)
-                cleanInventory(session)
+                fort = findClosestFort(session)
+                if fort:
+                    walkAndSpin(session, fort, speed)
+                    cleanInventory(session)
+            else:
+                grab_some_fkn_pokeballz(session)
+
+            # check distance from start
         # Catch problems and reauthenticate
         except GeneralPogoException as e:
             logging.critical('GeneralPogoException raised: %s', e)
