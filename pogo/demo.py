@@ -19,6 +19,8 @@ def setupLogger():
     logger.setLevel(logging.INFO)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
+
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     ch.setFormatter(formatter)
     logger.addHandler(ch)
@@ -77,8 +79,11 @@ def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=2):
 
     # Grab needed data from proto
     chances = encounter.capture_probability.capture_probability
+    logging.debug("chances: {}".format(repr(chances)))
     balls = encounter.capture_probability.pokeball_type
+    logging.debug("balls: {}".format(repr(balls)))
     bag = session.checkInventory().bag
+    logging.debug("bag: {}".format(repr(bag)))
 
     # Have we used a razz berry yet?
     berried = False
@@ -93,12 +98,21 @@ def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=2):
 
         # Check for balls and see if we pass
         # wanted threshold
-        for i in range(len(balls)):
-            if balls[i] in bag and bag[balls[i]] > 0:
-                altBall = balls[i]
-                if chances[i] > thresholdP:
-                    bestBall = balls[i]
-                    break
+        for ball in balls:
+            try:
+                if bag[ball] > 0:
+                    altBall = ball
+                    if chances[ball -1] > thresholdP:
+                        bestBall = ball
+            except KeyError:
+                logging.debug("No Balls: {}".format(ball))
+                pass
+        # for i in range(len(balls)):
+        #     if balls[i] in bag and bag[balls[i]] > 0:
+        #         altBall = balls[i]
+        #         if chances[i] > thresholdP:
+        #             bestBall = balls[i]
+        #             break
 
         # If we can't determine a ball, try a berry
         # or use a lower class ball
@@ -215,9 +229,11 @@ def walkAndSpin(session, fort, speed):
 # A very brute force approach to evolving
 def evolveAllPokemon(session):
     inventory = session.checkInventory()
-    for pokemon in inventory.party:
-        logging.info(session.evolvePokemon(pokemon))
-        time.sleep(1)
+    logging.info("Evolving all your pokes... hope you don't mind")
+    for pokemon in inventory.party[::-1]:
+        poke_status = session.evolvePokemon(pokemon)
+        logging.debug("EVOLVED SOME ASSHOLE: {}".format(poke_status))
+        time.sleep(0.02)
 
 
 # You probably don't want to run this
@@ -291,7 +307,7 @@ def cleanAllPokes(session):
         #remove all but best CP and best IV
         for x in range(len(ordered_pokz)-1):
             pok = ordered_pokz[x]
-            if pok.cp > 1500 or (pok.pokemon_id == pokedex.EEVEE and pok.cp > 600):
+            if pok.cp > 2000:
                 continue
             logging.info("(POKEMANAGE)\t-\tReleasing: "+pokedex[pok.pokemon_id]+" "+str(pok.cp)+" CP")
             session.releasePokemon(pok)
@@ -321,10 +337,8 @@ def cleanPokes(session, pokemon_id):
 
 def catch_demPokez(pokez, sess, whatup_cunt):
     if walkAndCatch(sess, pokez, whatup_cunt):
-        cleanAllPokes(sess)
         return True
     else:
-        cleanAllPokes(sess)
         return False
 
 def enough_time_left(pokzzzzzzzzz):
@@ -346,7 +360,7 @@ def safe_catch(pokies, session, speed): # NOT CAMEL CASE COZ PEP8 U FUCKERS
     epicpokes = []
     shitpokes = []
     for pokemon in pokies:
-        if pokedex.getRarityById(pokemon.pokemon_data.pokemon_id) >= 3: #if rare pokemanzzzz
+        if pokedex.getRarityById(pokemon.pokemon_data.pokemon_id) >= 4: #if rare pokemanzzzz
             epicpokes.append(pokemon)
         else:
             shitpokes.append(pokemon)
@@ -410,7 +424,9 @@ def camBot(session):
                 grab_some_fkn_pokeballz(session, speed)
             else:
                 grab_some_fkn_pokeballz(session, speed)
-
+            evolveAllPokemon(session)
+            cleanAllPokes(session)
+            evolveAllPokemon(session)
             # check distance from start
         # Catch problems and reauthenticate
         except GeneralPogoException as e:
