@@ -328,7 +328,8 @@ def catch_demPokez(pokez, sess, whatup_cunt):
         return False
 
 def enough_time_left(pokzzzzzzzzz):
-    return min(sorted(pokzzzzzzzzz, lambda p: p.time_till_hidden_ms)) > 10000
+    pokachu = sorted(pokzzzzzzzzz, lambda p: p.time_till_hidden_ms)
+    return min(pokachu).time_till_hidden_ms > 10000
 
 def location_jumper(locs, session):
     for loc in locs:
@@ -401,9 +402,9 @@ def camBot(session):
                     coutn += 1  # lol at this being added now
                     if safe_catch(findNearPokemon(session), session, speed):
                         break
-                    elif coutn >13:
-                        time.sleep(5)
+                    elif coutn > 13:
                         break
+                    time.sleep(5)
             fort = findClosestFort(session)
             if fort:
                 walkAndSpin(session, fort, speed)
