@@ -250,6 +250,41 @@ class Pokedex(dict):
             self.MEWTWO: 0, self.MEW: 0
         }
 
+        self.family = {
+            self.MISSINGNO: self.MISSINGNO, self.BULBASAUR: self.BULBASAUR, self.IVYSAUR: self.BULBASAUR, self.VENUSAUR: self.BULBASAUR,
+            self.CHARMANDER: self.CHARMANDER, self.CHARMELEON: self.CHARMANDER, self.CHARIZARD: self.CHARMANDER, self.SQUIRTLE: self.SQUIRTLE,
+            self.WARTORTLE: self.SQUIRTLE, self.BLASTOISE: self.SQUIRTLE, self.CATERPIE: self.CATERPIE, self.METAPOD: self.CATERPIE,
+            self.BUTTERFREE: self.CATERPIE, self.WEEDLE: self.WEEDLE, self.KAKUNA: self.WEEDLE, self.BEEDRILL: self.WEEDLE, self.PIDGEY: self.PIDGEY,
+            self.PIDGEOTTO: self.PIDGEY, self.PIDGEOT: self.PIDGEY, self.RATTATA: self.RATTATA, self.RATICATE: self.RATTATA, self.SPEAROW: self.SPEAROW,
+            self.FEAROW: self.SPEAROW, self.EKANS: self.EKANS, self.ARBOK: self.EKANS, self.PIKACHU: self.PIKACHU, self.RAICHU: self.PIKACHU,
+            self.SANDSHREW: self.SANDSHREW, self.SANDSLASH: self.SANDSHREW, self.NIDORAN_FEMALE: self.NIDORAN_FEMALE, self.NIDORINA: self.NIDORAN_FEMALE,
+            self.NIDOQUEEN: self.NIDORAN_FEMALE, self.NIDORAN_MALE: self.NIDORAN_MALE, self.NIDORINO: self.NIDORAN_MALE, self.NIDOKING: self.NIDORAN_MALE,
+            self.CLEFAIRY: self.CLEFAIRY, self.CLEFABLE: self.CLEFAIRY, self.VULPIX: self.VULPIX, self.NINETALES: self.VULPIX, self.JIGGLYPUFF: self.JIGGLYPUFF,
+            self.WIGGLYTUFF: self.JIGGLYPUFF, self.ZUBAT: self.ZUBAT, self.GOLBAT: self.ZUBAT, self.ODDISH: self.ODDISH, self.GLOOM: self.ODDISH,
+            self.VILEPLUME: self.ODDISH, self.PARAS: self.PARAS, self.PARASECT: self.PARAS, self.VENONAT: self.VENONAT, self.VENOMOTH: self.VENONAT,
+            self.DIGLETT: self.DIGLETT, self.DUGTRIO: self.DIGLETT, self.MEOWTH: self.MEOWTH, self.PERSIAN: self.MEOWTH, self.PSYDUCK: self.PSYDUCK,
+            self.GOLDUCK: self.PSYDUCK, self.MANKEY: self.MANKEY, self.PRIMEAPE: self.MANKEY, self.GROWLITHE: self.GROWLITHE, self.ARCANINE: self.GROWLITHE,
+            self.POLIWAG: self.POLIWAG, self.POLIWHIRL: self.POLIWAG, self.POLIWRATH: self.POLIWAG, self.ABRA: self.ABRA, self.KADABRA: self.ABRA,
+            self.ALAKAZAM: self.ABRA, self.MACHOP: self.MACHOP, self.MACHOKE: self.MACHOP, self.MACHAMP: self.MACHOP, self.BELLSPROUT: self.BELLSPROUT,
+            self.WEEPINBELL: self.BELLSPROUT, self.VICTREEBEL: self.BELLSPROUT, self.TENTACOOL: self.TENTACOOL, self.TENTACRUEL: self.TENTACOOL,
+            self.GEODUDE: self.GEODUDE, self.GRAVELER: self.GEODUDE, self.GOLEM: self.GEODUDE, self.PONYTA: self.PONYTA, self.RAPIDASH: self.PONYTA,
+            self.SLOWPOKE: self.SLOWPOKE, self.SLOWBRO: self.SLOWPOKE, self.MAGNEMITE: self.MAGNEMITE, self.MAGNETON: self.MAGNEMITE, self.FARFETCHD: self.FARFETCHD,
+            self.DODUO: self.DODUO, self.DODRIO: self.DODUO, self.SEEL: self.SEEL, self.DEWGONG: self.SEEL, self.GRIMER: self.GRIMER, self.MUK: self.GRIMER,
+            self.SHELLDER: self.SHELLDER, self.CLOYSTER: self.SHELLDER, self.GASTLY: self.GASTLY, self.HAUNTER: self.GASTLY, self.GENGAR: self.GASTLY,
+            self.ONIX: self.ONIX, self.DROWZEE: self.DROWZEE, self.HYPNO: self.DROWZEE, self.KRABBY: self.KRABBY, self.KINGLER: self.KRABBY, self.VOLTORB: self.VOLTORB,
+            self.ELECTRODE: self.VOLTORB, self.EXEGGCUTE: self.EXEGGCUTE, self.EXEGGUTOR: self.EXEGGCUTE, self.CUBONE: self.CUBONE, self.MAROWAK: self.CUBONE,
+            self.HITMONLEE: self.HITMONLEE, self.HITMONCHAN: self.HITMONCHAN, self.LICKITUNG: self.LICKITUNG, self.KOFFING: self.KOFFING, self.WEEZING: self.KOFFING,
+            self.RHYHORN: self.RHYHORN, self.RHYDON: self.RHYHORN, self.CHANSEY: self.CHANSEY, self.TANGELA: self.TANGELA, self.KANGASKHAN: self.KANGASKHAN,
+            self.HORSEA: self.HORSEA, self.SEADRA: self.HORSEA, self.GOLDEEN: self.GOLDEEN, self.SEAKING: self.GOLDEEN, self.STARYU: self.STARYU, self.STARMIE: self.STARYU,
+            self.MR_MIME: self.MR_MIME, self.SCYTHER: self.SCYTHER, self.JYNX: self.JYNX, self.ELECTABUZZ: self.ELECTABUZZ, self.MAGMAR: self.MAGMAR, self.PINSIR: self.PINSIR,
+            self.TAUROS: self.TAUROS, self.MAGIKARP: self.MAGIKARP, self.GYARADOS: self.MAGIKARP, self.LAPRAS: self.LAPRAS, self.DITTO: self.DITTO, self.EEVEE: self.EEVEE,
+            self.VAPOREON: self.EEVEE, self.JOLTEON: self.EEVEE, self.FLAREON: self.EEVEE, self.PORYGON: self.PORYGON, self.OMANYTE: self.OMANYTE, self.OMASTAR: self.OMANYTE,
+            self.KABUTO: self.KABUTO, self.KABUTOPS: self.KABUTO, self.AERODACTYL: self.AERODACTYL, self.SNORLAX: self.SNORLAX, self.ARTICUNO: self.ARTICUNO,
+            self.ZAPDOS: self.ZAPDOS, self.MOLTRES: self.MOLTRES, self.DRATINI: self.DRATINI, self.DRAGONAIR: self.DRATINI, self.DRAGONITE: self.DRATINI,
+            self.MEWTWO: self.MEWTWO, self.MEW: self.MEW
+
+        }
+
     def getRarityByName(self, name):
         return self.RarityById(self[name])
 

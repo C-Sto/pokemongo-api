@@ -254,10 +254,15 @@ def walkAndSpin(session, fort, speed):
 def evolveAllPokemon(session):
     inventory = session.checkInventory()
     logging.info("Evolving all your pokes... hope you don't mind")
-    for pokemon in inventory.party[::-1]:
-        poke_status = session.evolvePokemon(pokemon)
-        logging.debug("EVOLVED SOME ASSHOLE: {}".format(poke_status))
-        time.sleep(0.02)
+    for pokemon in inventory.party:
+        if pokedex.evolves[pokemon.pokemon_id] == 0:  # ignore pokes that don't evolve
+            continue
+        # check to see if we has enough candy to evolve it
+        candy = inventory.candies
+        if candy[pokedex.family[pokemon.pokemon_id]] >= pokedex.evolves[pokemon.pokemon_id]:
+            poke_status = session.evolvePokemon(pokemon)
+            logging.debug("EVOLVED SOME ASSHOLE: {}".format(poke_status))
+            time.sleep(0.5)
 
 
 # You probably don't want to run this
