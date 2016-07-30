@@ -4,6 +4,8 @@ import logging
 import time
 import sys
 import traceback
+from math import sqrt
+
 from custom_exceptions import GeneralPogoException
 from custom_exceptions import NoBallException
 
@@ -268,12 +270,116 @@ def evolveAllPokemon(session):
             time.sleep(0.5)
 
 
-# You probably don't want to run this
-def releaseAllPokemon(session):
+def smartEvolveAllPokemon(session, comparison="cp", remaining=1):
+    """
+    Evolves all pokes that it can, evolves best of type decided by comparison. Will leave remaining pokemon
+    :param session: duh
+    :param comparison: either cp or iv
+    :param remaining: number of pokemon to leave un-evolved.
+                      this should be lower than the numtokeep value in the clean method
+    :return: nothing
+    """
+    assert(comparison == "cp" or comparison == "iv")
     inventory = session.checkInventory()
-    for pokemon in inventory.party:
-        session.releasePokemon(pokemon)
-        time.sleep(1)
+    logging.info("(EVOLVE)\t-\tGonna try evolve sum doodz")
+
+    for x in range(151):
+        pokez = getPokesByID(inventory.party, x)
+        if len(pokez) <= remaining:
+            continue
+
+        pokemon = pokez[0]
+        candy = inventory.candies[pokedex.family[pokemon.pokemon_id]]
+        candyreq = pokedex.evolves[pokemon.pokemon_id]
+        if candy < candyreq or candyreq == 0:
+            continue
+        ordered = sorted(pokez, key=lambda k: k.cp, reverse=True) if (comparison=="cp")\
+                    else sorted(pokez, key=lambda k: checkPerfPercent(k), reverse=True)
+        # evolve, starting at the best
+        x = 0
+        while candy >= candyreq and x < len(pokez)-remaining:
+            candy = candy-candyreq
+            poke_status = session.evolvePokemon(pokemon)
+            logging.info("(EVOLVE)\t-\t"+pokedex[pokemon.pokemon_id]+"->"+pokedex[poke_status.evolved_pokemon_data.pokemon_id])
+            time.sleep(0.5)
+            x += 1
+
+
+
+
+def checkPerfPercent(poke):
+    # thx to pokemon rocket api for perfectpercent calc
+
+    # stam, atk, def
+    stam,atk,defense = pokedex.baseStats[poke.pokemon_id]
+    max_cp = (atk+15) * sqrt(defense+15) * sqrt(stam+15)
+    min_cp = atk * sqrt(defense) * sqrt(stam)
+    cur = (atk+poke.individual_attack)*sqrt(defense+poke.individual_defense)*sqrt(stam+poke.individual_stamina)
+
+    return ((cur-min_cp) / (max_cp-min_cp))*100
+
+
+def cleanPokemonSpecies(session, species, numToKeep = 1, comparison="both", cp_thresh = 2000, iv_thresh=95):
+    """
+    Clean pokemon of given species - removes low cp/ev pokemon.
+
+    :param session: session, duh
+    :param species: an enum (pokedex.<POKEMON>), corresponds 0-151 of pokedex number
+    :param numToKeep: number of comparison type pokes to keep (both will keep top x of each)
+    :param comparison: comparison type, cp, iv, or both
+    :param cp_thresh: cutoff for keeping regardless of iv (set to 10,000 to ignore)
+    :param iv_thresh: cutoff for keeping regardless of cp (set to 101 to ignore)
+    :return: iv_thresh: cutoff for keeping
+    """
+    # check input is valid
+    assert(comparison == "cp" or comparison == "iv" or comparison == "both")
+    party = session.checkInventory().party
+    # get all pokes of id
+    pokz = getPokesByID(party, species)
+    keepers = set()
+    if len(pokz) < numToKeep:
+        return
+
+    if comparison == "cp" or comparison == "both":
+        # order by iv
+        ordered_pokz = sorted(pokz, key=lambda k: k.cp, reverse=True)
+
+        # remove all but best x CP
+
+        # find best x cp
+        for x in range(numToKeep):
+            keepers.add(ordered_pokz[x].id)
+
+        # keep above cp_thresh
+        for x in ordered_pokz:
+            if x.cp > cp_thresh:
+                keepers.add(x.id)
+            else:
+                break
+
+    if comparison == "iv" or comparison == "both":
+        # order by iv
+        ordered_pokz= sorted(pokz, key=lambda k: checkPerfPercent(k), reverse=True)
+
+        # remove all but best x IV
+
+        # find best x IV
+        for x in range(numToKeep):
+            keepers.add(ordered_pokz[x].id)
+
+        # keep above iv_thresh
+        for x in ordered_pokz:
+            if checkPerfPercent(x) > iv_thresh:
+                keepers.add(x.id)
+            else:
+                break
+
+    # remove everything except for keepers
+    for poke in pokz:
+        if poke.id in keepers:
+            continue
+        logging.info("(POKEMANAGE)\t-\tReleasing: "+pokedex[poke.pokemon_id]+" "+str(poke.cp)+" CP "+str(checkPerfPercent(poke))+"% IV")
+        session.releasePokemon(poke)
 
 
 # Set an egg to an incubator
@@ -328,48 +434,8 @@ def getPokesByID(party, id):
 
 def cleanAllPokes(session):
     logging.info("(POKEMANAGE)\t-\tCleaning out Pokes...")
-    party = session.checkInventory().party
-    keepers = [pokedex.VAPOREON, pokedex.ARCANINE, pokedex.SNORLAX, pokedex.LAPRAS] #, pokedex.KRONICD]
-    # group
     for poke in range(0,151):
-        if poke in keepers:
-            continue
-        pokz = getPokesByID(party, poke)
-        if len(pokz) == 0:
-            continue
-        # order by cp
-        ordered_pokz= sorted(pokz, key=lambda k: k.cp)
-        #remove all but best CP and best IV
-        for x in range(len(ordered_pokz)-1):
-            pok = ordered_pokz[x]
-            if pok.cp > 2000:
-                continue
-            logging.info("(POKEMANAGE)\t-\tReleasing: "+pokedex[pok.pokemon_id]+" "+str(pok.cp)+" CP")
-            session.releasePokemon(pok)
-
-
-def cleanPokes(session, pokemon_id):
-    party = session.checkInventory().party
-    keepers = [pokedex.VAPOREON, pokedex.ARCANINE, pokedex.SNORLAX, pokedex.LAPRAS]
-    # group
-    poke = pokemon_id
-    if poke in keepers:
-        return
-    pokz = getPokesByID(party, poke)
-    if len(pokz) == 0:
-        return
-    # order by cp
-    ordered_pokz= sorted(pokz, key=lambda k: k.cp)
-    # remove all but best CP and best IV
-    for x in range(len(ordered_pokz)-1):
-        pok = ordered_pokz[x]
-        if pok.cp > 1500 or \
-                (pok.pokemon_id == pokedex.EEVEE and pok.cp > 750) or \
-                (pok.pokemon_id == pokedex.DRATINI and pok.cp > 700) or \
-                (pok.pokemon_id == pokedex.DRAGONAIR and pok.cp > 1100):
-            continue
-        logging.info("(POKEMANAGE)\t-\tReleasing: "+pokedex[pok.pokemon_id]+" "+str(pok.cp)+" CP")
-        session.releasePokemon(pok)
+        cleanPokemonSpecies(session, poke, numToKeep=1, comparison="both")
 
 
 def catch_demPokez(pokez, sess, whatup_cunt):
@@ -458,6 +524,7 @@ def camBot(session):
             cleanAllPokes(session)
             # check for pokeballs (don't try to catch if we have none)
             bag = session.getInventory().bag
+            cleanInventory(session)
             if bag[items.POKE_BALL] > 0 or bag[items.GREAT_BALL] > 0 or bag[items.ULTRA_BALL] > 0:
                 coutn = 1
                 while True:
@@ -467,7 +534,7 @@ def camBot(session):
                     elif coutn > 13:
                         break
             grab_some_fkn_pokeballz(session, speed)
-            evolveAllPokemon(session)
+            smartEvolveAllPokemon(session)
             cleanAllPokes(session)
             cleanInventory(session)
             setEgg(session)

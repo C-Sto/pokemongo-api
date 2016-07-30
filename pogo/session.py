@@ -581,16 +581,6 @@ class PogoSession(object):
         # Return everything
         return self._state.playerTeam
 
-    # These act as more logical functions.
-    # Might be better to break out seperately
-    # Walk over to position in meters
-    '''
-    def walkTo(self, olat, olon, speed):
-        #speed in km/h
-        lat,lon, _ = self.getCoordinates()
-        dist = Location.getDistance(lat,lon,olat,olon)
-
-    '''
     #speed in m/s
     def walkTo(self, olatitude, olongitude, speed):
         # speed in m/s
