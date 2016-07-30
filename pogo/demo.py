@@ -276,6 +276,19 @@ def releaseAllPokemon(session):
         time.sleep(1)
 
 
+# Set an egg to an incubator
+def setEgg(session):
+    inventory = session.checkInventory()
+
+    # If no eggs, nothing we can do
+    if len(inventory.eggs) == 0:
+        return None
+
+    egg = inventory.eggs[0]
+    incubator = inventory.incubators[0]
+    return session.setEgg(incubator, egg)
+
+
 def cleanInventory(session):
     recycled = 0
     bag = session.checkInventory().bag
