@@ -165,7 +165,10 @@ def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=1):
 
         # CATCH_FLEE is bad news
         if attempt.status == 3:
-            logging.info("(ENCOUNTER)\t-\tPossible soft ban.")
+            if count == 0:
+                logging.info("(ENCOUNTER)\t-\tPossible soft ban.")
+            else:
+                logging.info("Pokemon fleed at %dth attempt" % (count + 1))
             return attempt
 
         # Only try up to x attempts
