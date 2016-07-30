@@ -469,6 +469,8 @@ def camBot(session):
             grab_some_fkn_pokeballz(session, speed)
             evolveAllPokemon(session)
             cleanAllPokes(session)
+            cleanInventory(session)
+            setEgg(session)
 
         # check distance from start
         # Catch problems and reauthenticate
