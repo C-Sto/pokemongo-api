@@ -418,9 +418,13 @@ def cleanInventory(session):
         items.MASTER_BALL: 300
     }
     for limit in limited:
-        if limit in bag and bag[limit] > limited[limit]:
-            session.recycleItem(limit, bag[limit] - limited[limit])
-            recycled+=1
+        try:
+            if limit in bag and bag[limit] > limited[limit]:
+                session.recycleItem(limit, bag[limit] - limited[limit])
+                recycled+=1
+        except:
+            print "fuckin"
+            pass
     logging.info("(ITEM MANAGE)\t-\tCleaned out Inventory, "+str(recycled)+" items recycled.")
 
 
@@ -521,11 +525,9 @@ def camBot(session):
             if dist > 5000:
                 print "(TRAVEL)\t-\tWalking back to start to stay in area"
                 session.walkTo(startlat, startlon, speed)
-            cleanAllPokes(session)
             # check for pokeballs (don't try to catch if we have none)
             bag = session.getInventory().bag
-            cleanInventory(session)
-            if bag[items.POKE_BALL] > 0 or bag[items.GREAT_BALL] > 0 or bag[items.ULTRA_BALL] > 0:
+            if bag[items.POKE_BALL] > 0 or (hasattr(bag, 'items.GREAT_BALL') and bag[items.GREAT_BALL] > 0) or (hasattr(bag, 'items.ULTRA_BALL') and bag[items.ULTRA_BALL] > 0):
                 coutn = 1
                 while True:
                     coutn += 1  # lol at this being added now
