@@ -32,6 +32,8 @@ import requests
 import logging
 import time
 
+import random
+
 # Hide errors (Yes this is terrible, but prettier)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -584,6 +586,8 @@ class PogoSession(object):
     #speed in m/s
     def walkTo(self, olatitude, olongitude, speed):
         # speed in m/s
+        # fuzz speed
+        speed = random.uniform(speed-10, speed+10)
         # Calculate distance to position
         latitude, longitude, _ = self.getCoordinates()
         dist = Location.getDistance(
@@ -598,7 +602,7 @@ class PogoSession(object):
         divisions = dist/speed
         dlat = (latitude - olatitude)/divisions
         dlon = (longitude - olongitude)/divisions
-        logging.info("(TRAVEL)\t-\tWalking "+str(dist)+"m at "+str(speed)+"m/s, will take approx "+str(divisions)+"s")
+        logging.info("(TRAVEL)\t-\tWalking "+str(dist)+"m at "+str(speed)+"m/s ("+str(speed/0.2777778)+"km/h), will take approx "+str(divisions)+"s")
         while dist > speed:
             latitude-=dlat
             longitude-=dlon

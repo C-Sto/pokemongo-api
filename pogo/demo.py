@@ -140,7 +140,6 @@ def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=1):
     # Start encounter
     encounter = session.encounterPokemon(pokemon)
     bag = session.checkInventory().bag
-
     # give the guy a berry if first probability is kinda low (indicates tricky)
     if encounter.capture_probability.capture_probability[0] < 0.35:
         logging.info("(ENCOUNTER)\t-\tUsing a %s", items[items.RAZZ_BERRY])
@@ -253,6 +252,10 @@ def walkAndSpin(session, fort, speed):
         # Give it a spin
         fortResponse = session.getFortSearch(fort)
         logging.info("(POKESTOP)\t-\tXP: %d" % fortResponse.experience_awarded)
+        if fortResponse.experience_awarded > 0:
+            return fortResponse
+    logging.info("(POKESTOP)\t-\tAlmost certainly softban :(")
+    return False
 
 
 # A very brute force approach to evolving
@@ -460,7 +463,13 @@ def location_jumper(locs, session):
 
 
 def check_softban(session, fort, speed):
+    #  should probably invert this :/
     return walkAndSpin(session, fort, speed)
+
+
+def spinnyspinnyspinny(session, fort, speed):
+    for i in range(51):
+        walkAndSpin(session, fort, speed)
 
 
 def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
@@ -488,6 +497,8 @@ def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
                 if catch_demPokez(asshole, session, speed):
                     break
                 else:
+                    if not check_softban(session, findClosestFort(session), speed):
+                        spinnyspinnyspinny(session, findClosestFort(session), speed)
                     continue
             except IndexError:
                 logging.info("(SWARL)\t-\tRan out of shithouse pokez")
@@ -503,10 +514,24 @@ def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
     return True
 
 
+def do_a_pokeman(session, bag, speed):
+    if bag[items.POKE_BALL] > 0 or (hasattr(bag, 'items.GREAT_BALL') and bag[items.GREAT_BALL] > 0) or (hasattr(bag, 'items.ULTRA_BALL') and bag[items.ULTRA_BALL] > 0):
+        coutn = 1
+        while True:
+            coutn += 1  # lol at this being added now
+            if safe_catch(findNearPokemon(session), session, speed):
+                break
+            elif coutn > 13:
+                break
+
 def grab_some_fkn_pokeballz(session, speed):
     fort = findClosestFort(session)
     if fort:
-        walkAndSpin(session, fort, speed)
+        if not walkAndSpin(session, fort, speed):
+            if not check_softban(session, fort, speed):
+                spinnyspinnyspinny(session, fort, speed)
+    else:
+        logging.info("(TRAVEL)\t-\tNo Forts found? wut")
 
 
 # cambot :D
@@ -514,7 +539,7 @@ def camBot(session):
 
     startlat, startlon, startalt = session.getCoordinates()
     cooldown = 10
-    speed = 150*0.277778  # (150kph)
+    speed = 100*0.277778  # (150kph)
 
     while True:
         try:
@@ -527,16 +552,9 @@ def camBot(session):
                 session.walkTo(startlat, startlon, speed)
             # check for pokeballs (don't try to catch if we have none)
             bag = session.getInventory().bag
-            if bag[items.POKE_BALL] > 0 or (hasattr(bag, 'items.GREAT_BALL') and bag[items.GREAT_BALL] > 0) or (hasattr(bag, 'items.ULTRA_BALL') and bag[items.ULTRA_BALL] > 0):
-                coutn = 1
-                while True:
-                    coutn += 1  # lol at this being added now
-                    if safe_catch(findNearPokemon(session), session, speed):
-                        break
-                    elif coutn > 13:
-                        break
             grab_some_fkn_pokeballz(session, speed)
             smartEvolveAllPokemon(session)
+            do_a_pokeman(session, bag, speed)
             cleanAllPokes(session)
             cleanInventory(session)
             setEgg(session)
