@@ -257,6 +257,14 @@ def walkAndSpin(session, fort, speed):
     logging.info("(POKESTOP)\t-\tAlmost certainly softban :(")
     return False
 
+def spinQuiet(session, fort):
+    # No fort, demo == over
+    if fort:
+        fortResponse = session.getFortSearch(fort)
+        if fortResponse.experience_awarded > 0:
+            return True
+    return False
+
 
 # A very brute force approach to evolving
 def evolveAllPokemon(session):
@@ -469,7 +477,7 @@ def check_softban(session, fort, speed):
 
 def spinnyspinnyspinny(session, fort, speed):
     for i in range(51):
-        walkAndSpin(session, fort, speed)
+        walkAndSpinQuiet(session, fort, speed)
 
 
 def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
@@ -524,6 +532,7 @@ def do_a_pokeman(session, bag, speed):
             elif coutn > 13:
                 break
 
+
 def grab_some_fkn_pokeballz(session, speed):
     fort = findClosestFort(session)
     if fort:
@@ -535,11 +544,11 @@ def grab_some_fkn_pokeballz(session, speed):
 
 
 # cambot :D
-def camBot(session):
+def camBot(session, speed):
 
     startlat, startlon, startalt = session.getCoordinates()
     cooldown = 10
-    speed = 100*0.277778  # (150kph)
+    speed *= 0.277778  # convert to m/s
 
     while True:
         try:
@@ -575,12 +584,11 @@ def camBot(session):
             session = poko_session.reauthenticate(session)
             time.sleep(cooldown)
 
-
-
 # Entry point
 # Start off authentication and demo
 if __name__ == '__main__':
     setupLogger()
+    speed = 150  # km/h
     logging.debug('Logger set up')
 
     # Read in args
@@ -590,13 +598,15 @@ if __name__ == '__main__':
     parser.add_argument("-p", "--password", help="Password", required=True)
     parser.add_argument("-l", "--location", help="Location")
     parser.add_argument("-g", "--geo_key", help="GEO API Secret")
+    parser.add_argument("-s", "--speed", help="Speed")
     args = parser.parse_args()
 
     # Check service
     if args.auth not in ['ptc', 'google']:
         logging.error('Invalid auth service {}'.format(args.auth))
         sys.exit(-1)
-
+    if args.speed:
+        speed = int(args.speed)
     while True:
         try:
             # Create PokoAuthObject
@@ -617,7 +627,7 @@ if __name__ == '__main__':
 
             # Time to show off what we can do
             if session:
-                camBot(session)
+                camBot(session, speed)
 
             else:
                 logging.critical('Session not created successfully')

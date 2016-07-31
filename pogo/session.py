@@ -34,6 +34,8 @@ import time
 
 import random
 
+from util import getMs
+
 # Hide errors (Yes this is terrible, but prettier)
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -59,6 +61,9 @@ class PogoSession(object):
             self.createApiEndpoint(),
             '/rpc'
         )
+
+        self.cacheTime = 0
+        self.cacheMap = self.getMapObjects()
 
         # Set up Inventory
         self.getInventory()
@@ -258,6 +263,9 @@ class PogoSession(object):
 
     # Get Location
     def getMapObjects(self, radius=10):
+
+        if getMs() < self.cacheTime:
+            return self.cacheMap
         # Work out location details
         cells = self.location.getCells(radius)
         latitude, longitude, _ = self.getCoordinates()
@@ -279,7 +287,8 @@ class PogoSession(object):
 
         # Parse
         self._state.mapObjects.ParseFromString(res.returns[0])
-
+        self.cacheTime = getMs()+5000
+        self.cacheMap = self._state.mapObjects
         # Return everything
         return self._state.mapObjects
 
@@ -300,7 +309,10 @@ class PogoSession(object):
 
         # Send
         res = self.wrapAndRequest(payload)
-
+        for cell in self.cacheMap.map_cells:
+            if fort in cell.forts:
+                cell.forts.remove(fort)
+                break
         # Parse
         self._state.fortSearch.ParseFromString(res.returns[0])
 
