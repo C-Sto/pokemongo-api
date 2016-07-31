@@ -293,8 +293,8 @@ def smartEvolveAllPokemon(session, comparison="cp", remaining=1):
         candyreq = pokedex.evolves[pokemon.pokemon_id]
         if candy < candyreq or candyreq == 0:
             continue
-        ordered = sorted(pokez, key=lambda k: k.cp, reverse=True) if (comparison=="cp")\
-                    else sorted(pokez, key=lambda k: checkPerfPercent(k), reverse=True)
+        ordered = sorted(pokez, key=lambda k: k.cp, reverse=False) if (comparison=="cp")\
+                    else sorted(pokez, key=lambda k: checkPerfPercent(k), reverse=False)
         # evolve, starting at the best
         x = 0
         while candy >= candyreq and x < len(pokez)-remaining:
