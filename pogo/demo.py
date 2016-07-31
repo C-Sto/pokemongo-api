@@ -141,10 +141,12 @@ def encounterAndCatch(session, pokemon, thresholdP=0.5, limit=5, delay=1):
     encounter = session.encounterPokemon(pokemon)
     bag = session.checkInventory().bag
     # give the guy a berry if first probability is kinda low (indicates tricky)
-    if encounter.capture_probability.capture_probability[0] < 0.35:
-        logging.info("(ENCOUNTER)\t-\tUsing a %s", items[items.RAZZ_BERRY])
-        session.useItemCapture(items.RAZZ_BERRY, pokemon)
-
+    try:
+        if encounter.capture_probability.capture_probability[0] < 0.35:
+            logging.info("(ENCOUNTER)\t-\tUsing a %s", items[items.RAZZ_BERRY])
+            session.useItemCapture(items.RAZZ_BERRY, pokemon)
+    except Exception as e:
+        print e
     bestBall = pickBestBallToUse(bag, encounter, thresholdP)
 
     # no balls yo
@@ -475,10 +477,9 @@ def check_softban(session, fort, speed):
     return walkAndSpin(session, fort, speed)
 
 
-def spinnyspinnyspinny(session, fort, speed):
+def spinnyspinnyspinny(session, fort):
     for i in range(51):
-        walkAndSpinQuiet(session, fort, speed)
-
+        spinQuiet(session, fort)
 
 def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
     """
@@ -506,7 +507,7 @@ def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
                     break
                 else:
                     if not check_softban(session, findClosestFort(session), speed):
-                        spinnyspinnyspinny(session, findClosestFort(session), speed)
+                        spinnyspinnyspinny(session, findClosestFort(session))
                     continue
             except IndexError:
                 logging.info("(SWARL)\t-\tRan out of shithouse pokez")
@@ -538,7 +539,7 @@ def grab_some_fkn_pokeballz(session, speed):
     if fort:
         if not walkAndSpin(session, fort, speed):
             if not check_softban(session, fort, speed):
-                spinnyspinnyspinny(session, fort, speed)
+                spinnyspinnyspinny(session, fort)
     else:
         logging.info("(TRAVEL)\t-\tNo Forts found? wut")
 
