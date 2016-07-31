@@ -102,9 +102,9 @@ def pickBestBallToUse(bag, encounter, thresh=0.5):
     '''
     enc_cap_prob = encounter.capture_probability.capture_probability
     # default to first ball
-    if bag[items.ULTRA_BALL] > 0:
+    if hasattr(bag, 'items.ULTRA_BALL') and bag[items.ULTRA_BALL] > 0:
         ball = items.ULTRA_BALL
-    elif bag[items.GREAT_BALL] > 0:
+    elif hasattr(bag, 'items.GREAT_BALL') and bag[items.GREAT_BALL] > 0:
         ball = items.GREAT_BALL
     elif bag[items.POKE_BALL] > 0:
         ball = items.POKE_BALL
