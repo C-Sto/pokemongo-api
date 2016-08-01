@@ -599,7 +599,8 @@ class PogoSession(object):
     def walkTo(self, olatitude, olongitude, speed):
         # speed in m/s
         # fuzz speed
-        speed = random.uniform(speed-10, speed+10)
+        minSpeed = max(1, speed-10)
+        speed = random.uniform(minSpeed, speed+10)
         # Calculate distance to position
         latitude, longitude, _ = self.getCoordinates()
         dist = Location.getDistance(
