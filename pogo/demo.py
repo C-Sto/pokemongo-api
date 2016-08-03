@@ -271,7 +271,7 @@ def spinQuiet(session, fort):
 # A very brute force approach to evolving
 def evolveAllPokemon(session):
     inventory = session.checkInventory()
-    logging.info("Evolving all your pokes... hope you don't mind")
+    logging.info("Evolving some of your pokes... hope you don't mind")
     for pokemon in inventory.party:
         if pokedex.evolves[pokemon.pokemon_id] == 0:  # ignore pokes that don't evolve
             continue
@@ -279,7 +279,7 @@ def evolveAllPokemon(session):
         candy = inventory.candies
         if candy[pokedex.family[pokemon.pokemon_id]] >= pokedex.evolves[pokemon.pokemon_id]:
             poke_status = session.evolvePokemon(pokemon)
-            logging.debug("EVOLVED SOME ASSHOLE: {}".format(poke_status))
+            logging.debug("EVOLVED : {}".format(poke_status))
             time.sleep(0.5)
 
 
@@ -481,6 +481,7 @@ def spinnyspinnyspinny(session, fort):
     for i in range(51):
         spinQuiet(session, fort)
 
+
 def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
     """
     Performs a safe catch of good pokemanz by catching the shithouse ones first and only approaching the mad dogs once
@@ -497,7 +498,7 @@ def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
         logging.info("(SWARL)\t-\tSOME EPIC POKES EYYYYY:{}"
                      .format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in epicpokes])))
     if shitpokes:
-        logging.info("(SWARL)\t-\tTHESE POKES SUCK A MASSIVE DICK:{}"
+        logging.info("(SWARL)\t-\tTHESE POKES ARE SOMEWHAT UNDESIRABLE:{}"
                      .format(", ".join([repr(cunt.pokemon_data).strip("\n") for cunt in shitpokes])))
     if epicpokes:
         while True:
@@ -510,11 +511,11 @@ def safe_catch(pokies, session, speed):  # NOT CAMEL CASE COZ PEP8 U FUCKERS
                         spinnyspinnyspinny(session, findClosestFort(session))
                     continue
             except IndexError:
-                logging.info("(SWARL)\t-\tRan out of shithouse pokez")
+                logging.info("(SWARL)\t-\tRan out of bad pokez")
                 if enough_time_left(pokies):
                     return False
                 else:
-                    logging.info("(SWARL)\t-\twell fuckit - no time to waste...")
+                    logging.info("(SWARL)\t-\twell heregoesnothing - no time to waste...")
                     break
         for spaz in epicpokes:
             catch_demPokez(spaz, session, speed)
