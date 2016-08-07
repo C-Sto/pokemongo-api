@@ -1,18 +1,14 @@
-# Load Generated Protobuf
 from POGOProtos.Networking.Requests import Request_pb2
 from POGOProtos.Networking.Requests import RequestType_pb2
-from POGOProtos.Networking.Envelopes import ResponseEnvelope_pb2
-from POGOProtos.Networking.Envelopes import RequestEnvelope_pb2
+
 from POGOProtos.Networking.Requests.Messages import EncounterMessage_pb2
 from POGOProtos.Networking.Requests.Messages import FortSearchMessage_pb2
 from POGOProtos.Networking.Requests.Messages import FortDetailsMessage_pb2
 from POGOProtos.Networking.Requests.Messages import CatchPokemonMessage_pb2
-from POGOProtos.Networking.Requests.Messages import GetInventoryMessage_pb2
 from POGOProtos.Networking.Requests.Messages import GetMapObjectsMessage_pb2
 from POGOProtos.Networking.Requests.Messages import EvolvePokemonMessage_pb2
 from POGOProtos.Networking.Requests.Messages import ReleasePokemonMessage_pb2
 from POGOProtos.Networking.Requests.Messages import UseItemCaptureMessage_pb2
-from POGOProtos.Networking.Requests.Messages import DownloadSettingsMessage_pb2
 from POGOProtos.Networking.Requests.Messages import UseItemEggIncubatorMessage_pb2
 from POGOProtos.Networking.Requests.Messages import RecycleInventoryItemMessage_pb2
 from POGOProtos.Networking.Requests.Messages import NicknamePokemonMessage_pb2
@@ -20,200 +16,18 @@ from POGOProtos.Networking.Requests.Messages import UseItemPotionMessage_pb2
 from POGOProtos.Networking.Requests.Messages import UseItemReviveMessage_pb2
 from POGOProtos.Networking.Requests.Messages import SetPlayerTeamMessage_pb2
 from POGOProtos.Networking.Requests.Messages import SetFavoritePokemonMessage_pb2
+from POGOProtos.Networking.Requests.Messages import UpgradePokemonMessage_pb2
 
-# Load local
-import api
-from custom_exceptions import GeneralPogoException
-from inventory import Inventory, items
+from inventory import items
 from location import Location
-from state import State
+from session_bare import PogoSessionBare
+from custom_exceptions import GeneralPogoException
 
-import requests
 import logging
 import time
 
-import random
 
-from util import getMs
-
-# Hide errors (Yes this is terrible, but prettier)
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-
-API_URL = 'https://pgorelease.nianticlabs.com/plfe/rpc'
-
-
-class PogoSession(object):
-
-    def __init__(self, session, authProvider, accessToken, location):
-        self.cacheExpiry = 5000#ms
-        self.session = session
-        self.authProvider = authProvider
-        self.accessToken = accessToken
-        self.location = location
-        if self.location.noop:
-            logging.info("Limited functionality. No location provided")
-
-        self._state = State()
-
-        self.authTicket = None
-        self.endpoint = None
-        self.endpoint = 'https://{0}{1}'.format(
-            self.createApiEndpoint(),
-            '/rpc'
-        )
-
-        self.cacheTime = 0
-        self.cacheMap = self.getMapObjects()
-
-        # Set up Inventory
-        self.getInventory()
-
-    def __str__(self):
-        s = 'Access Token: {0}\nEndpoint: {1}\nLocation: {2}'.format(
-            self.accessToken,
-            self.endpoint,
-            self.location
-        )
-        return s
-
-    def setCoordinates(self, latitude, longitude):
-        self.location.setCoordinates(latitude, longitude)
-        self.getMapObjects(radius=1)
-
-    def getCoordinates(self):
-        return self.location.getCoordinates()
-
-    def createApiEndpoint(self):
-        payload = []
-        msg = Request_pb2.Request(
-            request_type=RequestType_pb2.GET_PLAYER
-        )
-        payload.append(msg)
-        req = self.wrapInRequest(payload)
-        res = self.request(req, API_URL)
-        if res is None:
-            logging.critical('Servers seem to be busy. Exiting.')
-            raise Exception('Could not connect to servers')
-
-        return res.api_url
-
-    def wrapInRequest(self, payload, defaults=True):
-
-        # If we haven't authenticated before
-        info = None
-        if not self.authTicket:
-            info = RequestEnvelope_pb2.RequestEnvelope.AuthInfo(
-                provider=self.authProvider,
-                token=RequestEnvelope_pb2.RequestEnvelope.AuthInfo.JWT(
-                    contents=self.accessToken,
-                    unknown2=59
-                )
-            )
-
-        # Build Envelope
-        latitude, longitude, altitude = self.getCoordinates()
-        req = RequestEnvelope_pb2.RequestEnvelope(
-            status_code=2,
-            request_id=api.getRPCId(),
-            longitude=longitude,
-            latitude=latitude,
-            altitude=altitude,
-            auth_ticket=self.authTicket,
-            unknown12=989,
-            auth_info=info
-        )
-
-        # Add requests
-        if defaults:
-            payload += self.getDefaults()
-        req.requests.extend(payload)
-
-        return req
-
-    def requestOrThrow(self, req, url=None):
-        if url is None:
-            url = self.endpoint
-
-        # Send request
-        rawResponse = self.session.post(url, data=req.SerializeToString())
-
-        # Parse it out
-        res = ResponseEnvelope_pb2.ResponseEnvelope()
-        res.ParseFromString(rawResponse.content)
-
-        # Update Auth ticket if it exists
-        if res.auth_ticket.start:
-            self.authTicket = res.auth_ticket
-
-        return res
-
-    def request(self, req, url=None):
-        try:
-            return self.requestOrThrow(req, url)
-        except Exception as e:
-            logging.error(e)
-            raise GeneralPogoException('Probably server fires.')
-
-    def wrapAndRequest(self, payload, defaults=True):
-        res = self.request(self.wrapInRequest(payload, defaults=defaults))
-        if defaults:
-            self.parseDefault(res)
-        if res is None:
-            logging.critical(res)
-            logging.critical('Servers seem to be busy. Exiting.')
-            raise Exception('No Valid Response.')
-
-        return res
-
-    @staticmethod
-    def getDefaults():
-        # Allocate for 4 default requests
-        data = [None, ] * 4
-
-        # Create Egg request
-        data[0] = Request_pb2.Request(
-            request_type=RequestType_pb2.GET_HATCHED_EGGS
-        )
-
-        # Create Inventory Request
-        data[1] = Request_pb2.Request(
-            request_type=RequestType_pb2.GET_INVENTORY,
-            request_message=GetInventoryMessage_pb2.GetInventoryMessage(
-                last_timestamp_ms=0
-            ).SerializeToString()
-        )
-
-        # Create Badge request
-        data[2] = Request_pb2.Request(
-            request_type=RequestType_pb2.CHECK_AWARDED_BADGES
-        )
-
-        # Create Settings request
-        data[3] = Request_pb2.Request(
-            request_type=RequestType_pb2.DOWNLOAD_SETTINGS,
-            request_message=DownloadSettingsMessage_pb2.DownloadSettingsMessage(
-                hash="4a2e9bc330dae60e7b74fc85b98868ab4700802e"
-            ).SerializeToString()
-        )
-
-        return data
-
-    # Parse the default responses
-    def parseDefault(self, res):
-        try:
-            self._state.eggs.ParseFromString(res.returns[1])
-            self._state.inventory.ParseFromString(res.returns[2])
-            self._state.badges.ParseFromString(res.returns[3])
-            self._state.settings.ParseFromString(res.returns[4])
-        except Exception as e:
-            logging.error(e)
-            raise GeneralPogoException("Error parsing response. Malformed response")
-
-        # Finally make inventory usable
-        item = self._state.inventory.inventory_delta.inventory_items
-        self.inventory = Inventory(item)
-
+class PogoSession(PogoSessionBare):
     # Hooks for those bundled in default
     # Getters
     def getEggs(self):
@@ -264,9 +78,6 @@ class PogoSession(object):
 
     # Get Location
     def getMapObjects(self, radius=10):
-
-        if getMs() < self.cacheTime:
-            return self.cacheMap
         # Work out location details
         cells = self.location.getCells(radius)
         latitude, longitude, _ = self.getCoordinates()
@@ -288,8 +99,7 @@ class PogoSession(object):
 
         # Parse
         self._state.mapObjects.ParseFromString(res.returns[0])
-        self.cacheTime = getMs()+self.cacheExpiry
-        self.cacheMap = self._state.mapObjects
+
         # Return everything
         return self._state.mapObjects
 
@@ -310,10 +120,7 @@ class PogoSession(object):
 
         # Send
         res = self.wrapAndRequest(payload)
-        for cell in self.cacheMap.map_cells:
-            if fort in cell.forts:
-                cell.forts.remove(fort)
-                break
+
         # Parse
         self._state.fortSearch.ParseFromString(res.returns[0])
 
@@ -366,7 +173,7 @@ class PogoSession(object):
         return self._state.encounter
 
     # Upon Encounter, try and catch
-    def catchPokemon(self, pokemon, pokeball=1):
+    def catchPokemon(self, pokemon, pokeball=items.POKE_BALL, normalized_reticle_size=1.950, hit_pokemon=True, spin_modifier=0.850, normalized_hit_position=1.0):
 
         # Create request
         payload = [Request_pb2.Request(
@@ -374,11 +181,11 @@ class PogoSession(object):
             request_message=CatchPokemonMessage_pb2.CatchPokemonMessage(
                 encounter_id=pokemon.encounter_id,
                 pokeball=pokeball,
-                normalized_reticle_size=1.950,
+                normalized_reticle_size=normalized_reticle_size,
                 spawn_point_id=pokemon.spawn_point_id,
-                hit_pokemon=True,
-                spin_modifier=0.850,
-                normalized_hit_position=1.0
+                hit_pokemon=hit_pokemon,
+                spin_modifier=spin_modifier,
+                normalized_hit_position=normalized_hit_position
             ).SerializeToString()
         )]
 
@@ -417,7 +224,7 @@ class PogoSession(object):
 
         # Create Request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.USEITEMPOTIONMESSAGE,
+            request_type = RequestType_pb2.USE_ITEM_POTION,
             request_message = UseItemPotionMessage_pb2.UseItemPotionMessage(
                 item_id = item_id,
                 pokemon_id = pokemon.id
@@ -438,7 +245,7 @@ class PogoSession(object):
 
         # Create request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.USEITEMREVIVEMESSAGE,
+            request_type = RequestType_pb2.USE_ITEM_REVIVE,
             request_message = UseItemReviveMessage_pb2.UseItemReviveMessage(
                 item_id = item_id,
                 pokemon_id = pokemon.id
@@ -560,7 +367,7 @@ class PogoSession(object):
 
         # Create Request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.SETFAVORITEPOKEMONMESSAGE,
+            request_type = RequestType_pb2.SET_FAVORITE_POKEMON,
             request_message = SetFavoritePokemonMessage_pb2.SetFavoritePokemonMessage(
                 pokemon_id = pokemon.id,
                 is_favorite = is_favorite
@@ -576,12 +383,32 @@ class PogoSession(object):
         # Return Everything
         return self._state.favoritePokemon
 
+    # Upgrade a Pokemon's CP
+    def upgradePokemon(self, pokemon):
+
+        # Create request
+        payload = [Request_pb2.Request(
+            request_type = RequestType_pb2.UPGRADE_POKEMON,
+            request_message = UpgradePokemonMessage_pb2.UpgradePokemonMessage(
+                pokemon_id = pokemon.id
+            ).SerializeToString()
+        )]
+
+        # Send
+        res = self.wrapAndRequest(payload, defaults=False)
+
+        # Parse
+        self._state.upgradePokemon.ParseFromString(res.returns[0])
+
+        # Return everything
+        return self._state.upgradePokemon
+
     # Choose player's team: "BLUE","RED", or "YELLOW".
     def setPlayerTeam(self, team):
 
         # Create request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.SETPLAYERTEAMMESSAGE,
+            request_type = RequestType_pb2.SET_PLAYER_TEAM,
             request_message = SetPlayerTeamMessage_pb2.SetPlayerTeamMessage(
                 team = team
             ).SerializeToString()
@@ -596,33 +423,43 @@ class PogoSession(object):
         # Return everything
         return self._state.playerTeam
 
-    #speed in m/s
-    def walkTo(self, olatitude, olongitude, speed):
-        # speed in m/s
-        # fuzz speed
-        minSpeed = max(1, speed-10)
-        speed = random.uniform(minSpeed, speed+10)
+    # These act as more logical functions.
+    # Might be better to break out seperately
+    # Walk over to position in meters
+    def walkTo(self, olatitude, olongitude, epsilon=10, step=7.5):
+        if step >= epsilon:
+            raise GeneralPogoException("Walk may never converge")
+
+        if self.location.noop:
+            raise GeneralPogoException("Location not set")
+
         # Calculate distance to position
         latitude, longitude, _ = self.getCoordinates()
-        dist = Location.getDistance(
+        dist = closest = Location.getDistance(
             latitude,
             longitude,
             olatitude,
             olongitude
         )
-        # don't divide by zero, bad stuff happens
-        if dist == 0:
-            return
-        divisions = dist/speed
-        dlat = (latitude - olatitude)/divisions
-        dlon = (longitude - olongitude)/divisions
-        logging.info("(TRAVEL)\t-\tWalking "+str(dist)+"m at "+str(speed)+"m/s ("+str(speed/0.2777778)+"km/h), will take approx "+str(divisions)+"s")
-        while dist > speed:
-            latitude-=dlat
-            longitude-=dlon
-            self.setCoordinates(latitude, longitude)
-            time.sleep(1)
-            dist = Location.getDistance(latitude, longitude, olatitude, olongitude)
-        #final move
-        self.setCoordinates(olatitude, olongitude)
 
+        # Run walk
+        divisions = closest / step
+        dLat = (latitude - olatitude) / divisions
+        dLon = (longitude - olongitude) / divisions
+
+        logging.info("Walking %f meters. This will take %f seconds..." % (dist, dist / step))
+        while dist > epsilon:
+            logging.debug("%f m -> %f m away", closest - dist, closest)
+            latitude -= dLat
+            longitude -= dLon
+            self.setCoordinates(
+                latitude,
+                longitude
+            )
+            time.sleep(1)
+            dist = Location.getDistance(
+                latitude,
+                longitude,
+                olatitude,
+                olongitude
+            )

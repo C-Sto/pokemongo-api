@@ -42,14 +42,11 @@ class Location(object):
         return Location(None, None, noop=True)
 
     def setLocation(self, search):
-        geo = 1
-        while geo == 1:
-            try:
-                geo = self.locator.geocode(search)
-            except:
-                print ('Error in Geo Request')
-
-        return geo.latitude, geo.longitude, geo.altitude
+        try:
+            geo = self.locator.geocode(search)
+        except:
+            raise GeneralPogoException('Error in Geo Request')
+        return geo.latitude, geo.longitude, geo.altitude or 0.63
 
     def setCoordinates(self, latitude, longitude):
         self.latitude = latitude
