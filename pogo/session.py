@@ -46,6 +46,7 @@ API_URL = 'https://pgorelease.nianticlabs.com/plfe/rpc'
 class PogoSession(object):
 
     def __init__(self, session, authProvider, accessToken, location):
+        self.cacheExpiry = 5000#ms
         self.session = session
         self.authProvider = authProvider
         self.accessToken = accessToken
@@ -287,7 +288,7 @@ class PogoSession(object):
 
         # Parse
         self._state.mapObjects.ParseFromString(res.returns[0])
-        self.cacheTime = getMs()+5000
+        self.cacheTime = getMs()+self.cacheExpiry
         self.cacheMap = self._state.mapObjects
         # Return everything
         return self._state.mapObjects
@@ -599,7 +600,8 @@ class PogoSession(object):
     def walkTo(self, olatitude, olongitude, speed):
         # speed in m/s
         # fuzz speed
-        speed = random.uniform(speed-10, speed+10)
+        minSpeed = max(1, speed-10)
+        speed = random.uniform(minSpeed, speed+10)
         # Calculate distance to position
         latitude, longitude, _ = self.getCoordinates()
         dist = Location.getDistance(
