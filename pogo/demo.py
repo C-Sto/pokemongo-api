@@ -631,6 +631,7 @@ if __name__ == '__main__':
 
             # Time to show off what we can do
             if session:
+                time.sleep(1)
                 camBot(session, speed)
 
             else:

@@ -12,7 +12,7 @@ from POGOProtos.Networking.Requests.Messages import DownloadSettingsMessage_pb2
 import api
 from state import State
 from inventory import Inventory
-from custom_exceptions import GeneralPogoException
+from custom_exceptions import GeneralPogoException, PogoResponseException
 from util import hashLocation, hashRequests, hashSignature, getMs
 
 import os
@@ -102,7 +102,7 @@ class PogoSessionBare(object):
 
         # Otherwise build signature
         elif self._encryptLib:
-            
+
             # Generate hashes
             hashA, hashB = hashLocation(
                 self.authTicket,
@@ -116,31 +116,28 @@ class PogoSessionBare(object):
                 location_hash1=hashA,
                 location_hash2=hashB,
                 unk22=os.urandom(32),
-                timestamp = getMs(),
-                timestamp_since_start=getMs() - self._start
+                timestamp=getMs(),
+                timestamp_since_start=getMs() - self._start,
+                request_hash=hashRequests(self.authTicket, payload)
             )
 
-            for req in payload:
-                h = hashRequests(self.authTicket, req)
-                proto.request_hash.append(h)
-
-            signature =  hashSignature(proto, self._encryptLib)
+            signature = hashSignature(proto, self._encryptLib)
 
         # Build Envelope
         req = RequestEnvelope_pb2.RequestEnvelope(
             status_code=2,
             request_id=api.getRPCId(),
-            unknown6=Unknown6_pb2.Unknown6(
+            unknown6=[Unknown6_pb2.Unknown6(
                 request_type=6,
                 unknown2=Unknown6_pb2.Unknown6.Unknown2(
-                    signature=signature
+                    encrypted_signature=signature
                 )
-            ),
+            )],
             longitude=longitude,
             latitude=latitude,
             altitude=altitude,
             auth_ticket=self.authTicket,
-            unknown12=989,
+            unknown12=3352,
             auth_info=info
         )
 
@@ -156,14 +153,18 @@ class PogoSessionBare(object):
         rawResponse = self.session.post(url, data=req.SerializeToString())
 
         # Parse it out
-        res = ResponseEnvelope_pb2.ResponseEnvelope()
-        res.ParseFromString(rawResponse.content)
+        try:
+            res = ResponseEnvelope_pb2.ResponseEnvelope()
+            res.ParseFromString(rawResponse.content)
 
-        # Update Auth ticket if it exists
-        if res.auth_ticket.start:
-            self.authTicket = res.auth_ticket
+            # Update Auth ticket if it exists
+            if res.auth_ticket.start:
+                self.authTicket = res.auth_ticket
 
-        return res
+            return res
+
+        except:
+            raise Exception('Woops')
 
     def request(self, req, url=None):
         try:
@@ -174,12 +175,12 @@ class PogoSessionBare(object):
 
     def wrapAndRequest(self, payload, defaults=True):
         res = self.request(self.wrapInRequest(payload, defaults=defaults))
-        if defaults:
-            self.parseDefault(res)
         if res is None:
             logging.critical(res)
             logging.critical('Servers seem to be busy. Exiting.')
             raise Exception('No Valid Response.')
+        if defaults:
+            self.parseDefault(res)
 
         return res
 
@@ -218,14 +219,19 @@ class PogoSessionBare(object):
 
     # Parse the default responses
     def parseDefault(self, res):
+        l = len(res.returns)
+        if l < 5:
+            logging.error(res)
+            raise PogoResponseException("Expected response not returned")
+
         try:
-            self._state.eggs.ParseFromString(res.returns[1])
-            self._state.inventory.ParseFromString(res.returns[2])
-            self._state.badges.ParseFromString(res.returns[3])
-            self._state.settings.ParseFromString(res.returns[4])
+            self._state.eggs.ParseFromString(res.returns[l - 4])
+            self._state.inventory.ParseFromString(res.returns[l - 3])
+            self._state.badges.ParseFromString(res.returns[l - 2])
+            self._state.settings.ParseFromString(res.returns[l - 1])
         except Exception as e:
             logging.error(e)
-            raise GeneralPogoException("Error parsing response. Malformed response")
+            raise PogoResponseException("Error parsing response. Malformed response")
 
         # Finally make inventory usable
         item = self._state.inventory.inventory_delta.inventory_items

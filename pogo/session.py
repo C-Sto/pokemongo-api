@@ -16,6 +16,8 @@ from POGOProtos.Networking.Requests.Messages import UseItemPotionMessage_pb2
 from POGOProtos.Networking.Requests.Messages import UseItemReviveMessage_pb2
 from POGOProtos.Networking.Requests.Messages import SetPlayerTeamMessage_pb2
 from POGOProtos.Networking.Requests.Messages import SetFavoritePokemonMessage_pb2
+from POGOProtos.Networking.Requests.Messages import LevelUpRewardsMessage_pb2
+from POGOProtos.Networking.Requests.Messages import UseItemXpBoostMessage_pb2
 from POGOProtos.Networking.Requests.Messages import UpgradePokemonMessage_pb2
 
 from inventory import items
@@ -173,7 +175,11 @@ class PogoSession(PogoSessionBare):
         return self._state.encounter
 
     # Upon Encounter, try and catch
-    def catchPokemon(self, pokemon, pokeball=items.POKE_BALL, normalized_reticle_size=1.950, hit_pokemon=True, spin_modifier=0.850, normalized_hit_position=1.0):
+    def catchPokemon(
+        self, pokemon, pokeball=items.POKE_BALL,
+        normalized_reticle_size=1.950, hit_pokemon=True,
+        spin_modifier=0.850, normalized_hit_position=1.0
+    ):
 
         # Create request
         payload = [Request_pb2.Request(
@@ -224,10 +230,10 @@ class PogoSession(PogoSessionBare):
 
         # Create Request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.USE_ITEM_POTION,
-            request_message = UseItemPotionMessage_pb2.UseItemPotionMessage(
-                item_id = item_id,
-                pokemon_id = pokemon.id
+            request_type=RequestType_pb2.USE_ITEM_POTION,
+            request_message=UseItemPotionMessage_pb2.UseItemPotionMessage(
+                item_id=item_id,
+                pokemon_id=pokemon.id
             ).SerializeToString()
         )]
 
@@ -241,14 +247,14 @@ class PogoSession(PogoSessionBare):
         return self._state.itemPotion
 
     # Use a Revive
-    def useItemRevive(self, item_id,pokemon):
+    def useItemRevive(self, item_id, pokemon):
 
         # Create request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.USE_ITEM_REVIVE,
-            request_message = UseItemReviveMessage_pb2.UseItemReviveMessage(
-                item_id = item_id,
-                pokemon_id = pokemon.id
+            request_type=RequestType_pb2.USE_ITEM_REVIVE,
+            request_message=UseItemReviveMessage_pb2.UseItemReviveMessage(
+                item_id=item_id,
+                pokemon_id=pokemon.id
             ).SerializeToString()
         )]
 
@@ -264,7 +270,6 @@ class PogoSession(PogoSessionBare):
     # Evolve Pokemon
     def evolvePokemon(self, pokemon):
 
-        # Create request
         payload = [Request_pb2.Request(
             request_type=RequestType_pb2.EVOLVE_POKEMON,
             request_message=EvolvePokemonMessage_pb2.EvolvePokemonMessage(
@@ -281,10 +286,8 @@ class PogoSession(PogoSessionBare):
         # Return everything
         return self._state.evolve
 
-    # Transfer Pokemon
     def releasePokemon(self, pokemon):
 
-        # Create request
         payload = [Request_pb2.Request(
             request_type=RequestType_pb2.RELEASE_POKEMON,
             request_message=ReleasePokemonMessage_pb2.ReleasePokemonMessage(
@@ -293,13 +296,49 @@ class PogoSession(PogoSessionBare):
         )]
 
         # Send
-        res = self.wrapAndRequest(payload)
+        res = self.wrapAndRequest(payload, defaults=False)
 
         # Parse
         self._state.release.ParseFromString(res.returns[0])
 
         # Return everything
         return self._state.release
+
+    def getLevelUp(self, newLevel):
+
+        payload = [Request_pb2.Request(
+            request_type=RequestType_pb2.LEVEL_UP_REWARDS,
+            request_message=LevelUpRewardsMessage_pb2.LevelUpRewardsMessage(
+                level=newLevel
+            ).SerializeToString()
+        )]
+
+        # Send
+        res = self.wrapAndRequest(payload, defaults=False)
+
+        # Parse
+        self._state.levelUp.ParseFromString(res.returns[0])
+
+        # Return everything
+        return self._state.levelUp
+
+    def useXpBoost(self):
+
+        payload = [Request_pb2.Request(
+            request_type=RequestType_pb2.USE_ITEM_XP_BOOST,
+            request_message=UseItemXpBoostMessage_pb2.UseItemXpBoostMessage(
+                item_id=items.LUCKY_EGG
+            ).SerializeToString()
+        )]
+
+        # Send
+        res = self.wrapAndRequest(payload, defaults=False)
+
+        # Parse
+        self._state.xpBoost.ParseFromString(res.returns[0])
+
+        # Return everything
+        return self._state.xpBoost
 
     # Throw away items
     def recycleItem(self, item_id, count):
@@ -367,10 +406,10 @@ class PogoSession(PogoSessionBare):
 
         # Create Request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.SET_FAVORITE_POKEMON,
-            request_message = SetFavoritePokemonMessage_pb2.SetFavoritePokemonMessage(
-                pokemon_id = pokemon.id,
-                is_favorite = is_favorite
+            request_type=RequestType_pb2.SET_FAVORITE_POKEMON,
+            request_message=SetFavoritePokemonMessage_pb2.SetFavoritePokemonMessage(
+                pokemon_id=pokemon.id,
+                is_favorite=is_favorite
             ).SerializeToString()
         )]
 
@@ -388,9 +427,9 @@ class PogoSession(PogoSessionBare):
 
         # Create request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.UPGRADE_POKEMON,
-            request_message = UpgradePokemonMessage_pb2.UpgradePokemonMessage(
-                pokemon_id = pokemon.id
+            request_type=RequestType_pb2.UPGRADE_POKEMON,
+            request_message=UpgradePokemonMessage_pb2.UpgradePokemonMessage(
+                pokemon_id=pokemon.id
             ).SerializeToString()
         )]
 
@@ -408,9 +447,9 @@ class PogoSession(PogoSessionBare):
 
         # Create request
         payload = [Request_pb2.Request(
-            request_type = RequestType_pb2.SET_PLAYER_TEAM,
-            request_message = SetPlayerTeamMessage_pb2.SetPlayerTeamMessage(
-                team = team
+            request_type=RequestType_pb2.SET_PLAYER_TEAM,
+            request_message=SetPlayerTeamMessage_pb2.SetPlayerTeamMessage(
+                team=team
             ).SerializeToString()
         )]
 
